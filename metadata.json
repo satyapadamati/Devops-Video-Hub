@@ -1,0 +1,5 @@
+{
+  "name": " DevOps Video Hub",
+  "description": "An exclusive SaaS platform for DevOps video training, with access managed by a permission list. Users sign in with their Gmail and can view curated video content if they are on the approved list.",
+  "requestFramePermissions": []
+}
