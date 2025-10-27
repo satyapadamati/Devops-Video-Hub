@@ -2,11 +2,12 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import { Content } from '../types';
 import { db } from '../firebaseConfig';
-import { collection, getDocs, addDoc, deleteDoc, doc, query, orderBy, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, addDoc, deleteDoc, doc, query, orderBy, serverTimestamp, updateDoc } from 'firebase/firestore';
 
 interface ContentContextType {
   contentList: Content[];
   addContent: (content: Omit<Content, 'id'>) => Promise<void>;
+  updateContent: (id: string, updatedContent: Partial<Omit<Content, 'id'>>) => Promise<void>;
   removeContent: (id: string) => Promise<void>;
 }
 
@@ -78,6 +79,16 @@ export const ContentProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
+  const updateContent = async (id: string, updatedContent: Partial<Omit<Content, 'id'>>) => {
+    try {
+      const contentDocRef = doc(db, 'content', id);
+      await updateDoc(contentDocRef, updatedContent);
+      setContentList(prev => prev.map(c => c.id === id ? { ...c, ...updatedContent } : c));
+    } catch(error) {
+        console.error("Error updating content in Firestore:", error);
+    }
+  };
+
   const removeContent = async (id: string) => {
     try {
       await deleteDoc(doc(db, 'content', id));
@@ -88,7 +99,7 @@ export const ContentProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
   return (
-    <ContentContext.Provider value={{ contentList, addContent, removeContent }}>
+    <ContentContext.Provider value={{ contentList, addContent, updateContent, removeContent }}>
       {!loading ? children : null}
     </ContentContext.Provider>
   );

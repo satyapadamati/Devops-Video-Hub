@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import LoginScreen from './components/LoginScreen';
 import RestrictedAccess from './components/RestrictedAccess';
@@ -10,8 +11,16 @@ import Footer from './components/Footer';
 type View = 'library' | 'admin';
 
 const App: React.FC = () => {
-  const { user, isAuthorized } = useAuth();
+  const { user, isAuthorized, isAdmin } = useAuth();
   const [view, setView] = useState<View>('library');
+
+  useEffect(() => {
+    // Security check: If a user is not an admin but somehow the view is 'admin',
+    // force them back to the library.
+    if (isAuthorized && !isAdmin && view === 'admin') {
+      setView('library');
+    }
+  }, [isAuthorized, isAdmin, view]);
 
   const renderContent = () => {
     if (!user) {
@@ -35,7 +44,7 @@ const App: React.FC = () => {
         <Header currentView={view} setView={setView} />
         <main className="flex-grow container mx-auto px-4 py-8">
           {view === 'library' && <ContentLibrary />}
-          {view === 'admin' && <AdminDashboard />}
+          {view === 'admin' && isAdmin && <AdminDashboard />}
         </main>
       </>
     );

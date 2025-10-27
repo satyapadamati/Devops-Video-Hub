@@ -1,9 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useContent } from '../contexts/ContentContext';
-import { TrashIcon, CollectionIcon, UsersIcon, VideoCameraIcon, DocumentTextIcon, FolderIcon, CheckCircleIcon, XCircleIcon } from './icons';
+import { TrashIcon, CollectionIcon, UsersIcon, VideoCameraIcon, DocumentTextIcon, FolderIcon, CheckCircleIcon, XCircleIcon, PencilIcon } from './icons';
 import { PERMANENT_ADMIN_EMAIL } from '../constants';
+import { Content } from '../types';
 
 const UserManagementTab: React.FC = () => {
   const { 
@@ -13,7 +14,9 @@ const UserManagementTab: React.FC = () => {
     user,
     pendingRequests,
     approveRequest,
-    denyRequest
+    denyRequest,
+    grantAdmin,
+    revokeAdmin
   } = useAuth();
   const [newEmail, setNewEmail] = useState('');
 
@@ -71,25 +74,33 @@ const UserManagementTab: React.FC = () => {
       <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
         <h3 className="text-xl font-semibold text-white mb-4">Authorized Users ({permissionList.length})</h3>
         <ul className="space-y-3">
-          {permissionList.map(email => (
+          {permissionList.map(p => (
             <li
-              key={email}
+              key={p.email}
               className="flex justify-between items-center p-3 bg-gray-700 rounded-md"
             >
-              <span className="text-gray-200 flex items-center">
-                {email} 
-                {user?.email === email && <span className="text-xs text-gray-400 ml-2">(You)</span>}
-                {email === PERMANENT_ADMIN_EMAIL && <span className="ml-2 text-xs font-semibold bg-yellow-600 text-yellow-100 px-2 py-0.5 rounded-full">Permanent Admin</span>}
-              </span>
-              {email !== PERMANENT_ADMIN_EMAIL && (
-                <button
-                  onClick={() => removeUserFromPermissionList(email)}
-                  className="text-gray-400 hover:text-red-500 transition-colors"
-                  title={`Remove ${email}`}
-                >
-                  <TrashIcon className="h-5 w-5" />
-                </button>
-              )}
+              <div className="flex items-center space-x-2">
+                <span className="text-gray-200">{p.email}</span>
+                {user?.email === p.email && <span className="text-xs text-gray-400">(You)</span>}
+                {p.email === PERMANENT_ADMIN_EMAIL && <span className="text-xs font-semibold bg-yellow-600 text-yellow-100 px-2 py-0.5 rounded-full">Permanent Admin</span>}
+                {p.isAdmin && p.email !== PERMANENT_ADMIN_EMAIL && <span className="text-xs font-semibold bg-blue-600 text-blue-100 px-2 py-0.5 rounded-full">Admin</span>}
+              </div>
+              <div className="flex items-center space-x-3">
+                {user?.email === PERMANENT_ADMIN_EMAIL && p.email !== PERMANENT_ADMIN_EMAIL && (
+                   p.isAdmin 
+                   ? <button onClick={() => revokeAdmin(p.email)} className="text-xs px-2 py-1 bg-yellow-700 hover:bg-yellow-800 rounded-md">Revoke Admin</button>
+                   : <button onClick={() => grantAdmin(p.email)} className="text-xs px-2 py-1 bg-green-700 hover:bg-green-800 rounded-md">Make Admin</button>
+                )}
+                {p.email !== PERMANENT_ADMIN_EMAIL && (
+                  <button
+                    onClick={() => removeUserFromPermissionList(p.email)}
+                    className="text-gray-400 hover:text-red-500 transition-colors"
+                    title={`Remove ${p.email}`}
+                  >
+                    <TrashIcon className="h-5 w-5" />
+                  </button>
+                )}
+              </div>
             </li>
           ))}
         </ul>
@@ -98,17 +109,67 @@ const UserManagementTab: React.FC = () => {
   );
 };
 
+const EditContentModal: React.FC<{
+    content: Content;
+    onClose: () => void;
+    onSave: (updatedContent: Partial<Omit<Content, 'id'>>) => void;
+}> = ({ content, onClose, onSave }) => {
+    const [editedContent, setEditedContent] = useState(content);
+
+    useEffect(() => {
+        setEditedContent(content);
+    }, [content]);
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        setEditedContent(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSave = () => {
+        onSave(editedContent);
+        onClose();
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+            <div className="bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-2xl">
+                <h3 className="text-xl font-semibold text-white mb-4">Edit Content</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="text" name="title" value={editedContent.title} onChange={handleInputChange} placeholder="Content Title" required className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-blue-500" />
+                    <input type="text" name="thumbnailUrl" value={editedContent.thumbnailUrl} onChange={handleInputChange} placeholder="Thumbnail Image URL" required className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-blue-500" />
+                    <textarea name="description" value={editedContent.description} onChange={handleInputChange} placeholder="Description" rows={3} className="md:col-span-2 px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-blue-500"></textarea>
+                    <input type="text" name="driveFileId" value={editedContent.driveFileId} onChange={handleInputChange} placeholder="Google Drive File or Folder ID" required className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-blue-500" />
+                    <input type="text" name="series" value={editedContent.series || ''} onChange={handleInputChange} placeholder="Series / Playlist Name (optional)" className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-blue-500" />
+                    <div className="flex gap-4">
+                        <select name="type" value={editedContent.type} onChange={handleInputChange} className="flex-grow px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-blue-500">
+                            <option value="video">Video</option>
+                            <option value="document">Document</option>
+                            <option value="folder">Folder</option>
+                        </select>
+                        <input type="text" name="duration" value={editedContent.duration} onChange={handleInputChange} placeholder="e.g., 14:32 or 5 pages" className="flex-grow px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-blue-500" />
+                    </div>
+                </div>
+                 <div className="mt-6 flex justify-end space-x-4">
+                    <button onClick={onClose} className="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-md text-white font-semibold">Cancel</button>
+                    <button onClick={handleSave} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-md text-white font-semibold">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const ContentManagementTab: React.FC = () => {
-    const { contentList, addContent, removeContent } = useContent();
-    const [newContent, setNewContent] = useState({
+    const { contentList, addContent, removeContent, updateContent } = useContent();
+    const [newContent, setNewContent] = useState<Omit<Content, 'id'>>({
         title: '',
         description: '',
         thumbnailUrl: '',
         driveFileId: '',
-        type: 'video' as 'video' | 'document' | 'folder',
+        type: 'video',
         duration: '',
         series: ''
     });
+    const [isEditing, setIsEditing] = useState<Content | null>(null);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -127,7 +188,13 @@ const ContentManagementTab: React.FC = () => {
         }
     };
     
-    const getIcon = (type: (typeof newContent.type)) => {
+    const handleUpdateContent = (updatedContent: Partial<Omit<Content, 'id'>>) => {
+        if (isEditing) {
+            updateContent(isEditing.id, updatedContent);
+        }
+    };
+    
+    const getIcon = (type: Content['type']) => {
         switch(type) {
             case 'video': return <VideoCameraIcon className="h-6 w-6 text-gray-400 flex-shrink-0" />;
             case 'document': return <DocumentTextIcon className="h-6 w-6 text-gray-400 flex-shrink-0" />;
@@ -137,12 +204,19 @@ const ContentManagementTab: React.FC = () => {
 
     return (
         <>
+            {isEditing && (
+                <EditContentModal 
+                    content={isEditing} 
+                    onClose={() => setIsEditing(null)} 
+                    onSave={handleUpdateContent} 
+                />
+            )}
             <div className="bg-gray-800 p-6 rounded-lg shadow-lg mb-8">
                 <h3 className="text-xl font-semibold text-white mb-4">Add New Content</h3>
                 <form onSubmit={handleAddContent} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <input type="text" name="title" value={newContent.title} onChange={handleInputChange} placeholder="Content Title" required className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-blue-500" />
                     <input type="text" name="thumbnailUrl" value={newContent.thumbnailUrl} onChange={handleInputChange} placeholder="Thumbnail Image URL" required className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-blue-500" />
-                    <textarea name="description" value={newContent.description} onChange={handleInputChange} placeholder="Description" rows-={3} className="md:col-span-2 px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-blue-500"></textarea>
+                    <textarea name="description" value={newContent.description} onChange={handleInputChange} placeholder="Description" rows={3} className="md:col-span-2 px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-blue-500"></textarea>
                     <input type="text" name="driveFileId" value={newContent.driveFileId} onChange={handleInputChange} placeholder="Google Drive File or Folder ID" required className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-blue-500" />
                     <input type="text" name="series" value={newContent.series} onChange={handleInputChange} placeholder="Series / Playlist Name (optional)" className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-blue-500" />
                     <div className="flex gap-4">
@@ -168,9 +242,14 @@ const ContentManagementTab: React.FC = () => {
                                 {content.series && <p className="text-xs text-blue-400 font-semibold">{content.series}</p>}
                                 <p className="text-xs text-gray-400">ID: {content.driveFileId}</p>
                             </div>
-                            <button onClick={() => removeContent(content.id)} className="text-gray-400 hover:text-red-500 transition-colors" title={`Remove ${content.title}`}>
-                                <TrashIcon className="h-5 w-5" />
-                            </button>
+                            <div className="flex items-center space-x-3">
+                                <button onClick={() => setIsEditing(content)} className="text-gray-400 hover:text-blue-400 transition-colors" title={`Edit ${content.title}`}>
+                                    <PencilIcon className="h-5 w-5" />
+                                </button>
+                                <button onClick={() => removeContent(content.id)} className="text-gray-400 hover:text-red-500 transition-colors" title={`Remove ${content.title}`}>
+                                    <TrashIcon className="h-5 w-5" />
+                                </button>
+                            </div>
                         </li>
                     ))}
                 </ul>

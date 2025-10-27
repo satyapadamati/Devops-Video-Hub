@@ -9,7 +9,7 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ currentView, setView }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, isAdmin } = useAuth();
 
   const NavButton: React.FC<{
     view: 'library' | 'admin';
@@ -37,7 +37,9 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView }) => {
             <h1 className="text-xl font-bold text-white">DevOps Video Hub</h1>
             <nav className="flex space-x-2">
               <NavButton view="library" icon={<VideoCameraIcon className="h-5 w-5" />} text="Library" />
-              <NavButton view="admin" icon={<ShieldCheckIcon className="h-5 w-5" />} text="Admin" />
+              {isAdmin && (
+                <NavButton view="admin" icon={<ShieldCheckIcon className="h-5 w-5" />} text="Admin" />
+              )}
             </nav>
           </div>
           <div className="flex items-center space-x-3">

@@ -1,6 +1,12 @@
 
+// FIX: Added missing User interface to resolve import error.
 export interface User {
   email: string;
+}
+
+export interface Permission {
+  email: string;
+  isAdmin?: boolean;
 }
 
 export interface Content {
