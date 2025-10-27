@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useContent } from '../contexts/ContentContext';
 import { TrashIcon, CollectionIcon, UsersIcon, VideoCameraIcon, DocumentTextIcon, FolderIcon, CheckCircleIcon, XCircleIcon } from './icons';
+import { PERMANENT_ADMIN_EMAIL } from '../constants';
 
 const UserManagementTab: React.FC = () => {
   const { 
@@ -75,14 +76,20 @@ const UserManagementTab: React.FC = () => {
               key={email}
               className="flex justify-between items-center p-3 bg-gray-700 rounded-md"
             >
-              <span className="text-gray-200">{email} {user?.email === email && "(You)"}</span>
-              <button
-                onClick={() => removeUserFromPermissionList(email)}
-                className="text-gray-400 hover:text-red-500 transition-colors"
-                title={`Remove ${email}`}
-              >
-                <TrashIcon className="h-5 w-5" />
-              </button>
+              <span className="text-gray-200 flex items-center">
+                {email} 
+                {user?.email === email && <span className="text-xs text-gray-400 ml-2">(You)</span>}
+                {email === PERMANENT_ADMIN_EMAIL && <span className="ml-2 text-xs font-semibold bg-yellow-600 text-yellow-100 px-2 py-0.5 rounded-full">Permanent Admin</span>}
+              </span>
+              {email !== PERMANENT_ADMIN_EMAIL && (
+                <button
+                  onClick={() => removeUserFromPermissionList(email)}
+                  className="text-gray-400 hover:text-red-500 transition-colors"
+                  title={`Remove ${email}`}
+                >
+                  <TrashIcon className="h-5 w-5" />
+                </button>
+              )}
             </li>
           ))}
         </ul>
@@ -99,7 +106,8 @@ const ContentManagementTab: React.FC = () => {
         thumbnailUrl: '',
         driveFileId: '',
         type: 'video' as 'video' | 'document' | 'folder',
-        duration: ''
+        duration: '',
+        series: ''
     });
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -112,7 +120,7 @@ const ContentManagementTab: React.FC = () => {
         if (newContent.title && newContent.driveFileId && newContent.thumbnailUrl) {
             addContent(newContent);
             setNewContent({
-                title: '', description: '', thumbnailUrl: '', driveFileId: '', type: 'video', duration: ''
+                title: '', description: '', thumbnailUrl: '', driveFileId: '', type: 'video', duration: '', series: ''
             });
         } else {
             alert('Please fill out all required fields: Title, Thumbnail URL, and Drive File/Folder ID.');
@@ -134,8 +142,9 @@ const ContentManagementTab: React.FC = () => {
                 <form onSubmit={handleAddContent} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <input type="text" name="title" value={newContent.title} onChange={handleInputChange} placeholder="Content Title" required className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-blue-500" />
                     <input type="text" name="thumbnailUrl" value={newContent.thumbnailUrl} onChange={handleInputChange} placeholder="Thumbnail Image URL" required className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-blue-500" />
-                    <textarea name="description" value={newContent.description} onChange={handleInputChange} placeholder="Description" rows={3} className="md:col-span-2 px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-blue-500"></textarea>
+                    <textarea name="description" value={newContent.description} onChange={handleInputChange} placeholder="Description" rows-={3} className="md:col-span-2 px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-blue-500"></textarea>
                     <input type="text" name="driveFileId" value={newContent.driveFileId} onChange={handleInputChange} placeholder="Google Drive File or Folder ID" required className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-blue-500" />
+                    <input type="text" name="series" value={newContent.series} onChange={handleInputChange} placeholder="Series / Playlist Name (optional)" className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-blue-500" />
                     <div className="flex gap-4">
                         <select name="type" value={newContent.type} onChange={handleInputChange} className="flex-grow px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-blue-500">
                             <option value="video">Video</option>
@@ -156,6 +165,7 @@ const ContentManagementTab: React.FC = () => {
                             {getIcon(content.type)}
                             <div className="flex-grow">
                                 <p className="font-semibold text-white">{content.title}</p>
+                                {content.series && <p className="text-xs text-blue-400 font-semibold">{content.series}</p>}
                                 <p className="text-xs text-gray-400">ID: {content.driveFileId}</p>
                             </div>
                             <button onClick={() => removeContent(content.id)} className="text-gray-400 hover:text-red-500 transition-colors" title={`Remove ${content.title}`}>

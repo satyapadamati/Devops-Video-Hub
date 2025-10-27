@@ -1,35 +1,76 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useContent } from '../contexts/ContentContext';
 import { Content } from '../types';
-import { PlayIcon, VideoCameraIcon, DocumentTextIcon, XIcon, FolderIcon } from './icons';
+import { PlayIcon, VideoCameraIcon, DocumentTextIcon, XIcon, FolderIcon, ListBulletIcon } from './icons';
 
-const VideoSidePanel: React.FC<{ content: Content; onClose: () => void }> = ({ content, onClose }) => {
-  const videoUrl = `https://drive.google.com/file/d/${content.driveFileId}/preview`;
+const PlayerPanel: React.FC<{ 
+  selectedContent: Content; 
+  onClose: () => void;
+  playlist: Content[];
+}> = ({ selectedContent, onClose, playlist }) => {
+  const [currentlyPlaying, setCurrentlyPlaying] = useState(selectedContent);
+
+  useEffect(() => {
+    setCurrentlyPlaying(selectedContent);
+  }, [selectedContent]);
+
+  const videoUrl = `https://drive.google.com/file/d/${currentlyPlaying.driveFileId}/preview`;
 
   return (
-    <div className="bg-gray-800 rounded-lg shadow-xl flex flex-col h-full">
-      <div className="relative p-4">
-        <div className="aspect-w-16 aspect-h-9">
+    <div className="bg-gray-800 shadow-xl flex flex-col h-full">
+      <div className="relative">
+        <div className="aspect-w-16 aspect-h-9 bg-black">
             <iframe 
+                key={currentlyPlaying.id}
                 src={videoUrl} 
-                title={content.title} 
+                title={currentlyPlaying.title} 
                 frameBorder="0" 
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
                 allowFullScreen
-                className="w-full h-full rounded-md"
+                className="w-full h-full"
             ></iframe>
         </div>
          <button 
             onClick={onClose} 
-            className="absolute top-0 right-0 m-2 bg-gray-700 hover:bg-gray-600 rounded-full p-1.5 transition-colors"
+            className="absolute top-2 right-2 bg-gray-900 bg-opacity-50 hover:bg-opacity-75 rounded-full p-1.5 transition-colors"
             aria-label="Close video player"
         >
-            <XIcon className="h-4 w-4 text-gray-200" />
+            <XIcon className="h-5 w-5 text-white" />
         </button>
       </div>
-      <div className="p-4 pt-0 overflow-y-auto">
-        <h3 className="text-xl font-bold text-white">{content.title}</h3>
-        <p className="text-gray-400 mt-2 text-sm">{content.description}</p>
+      <div className="flex-grow flex flex-col overflow-y-hidden">
+        <div className="p-4 border-b border-gray-700">
+            <h3 className="text-xl font-bold text-white">{currentlyPlaying.title}</h3>
+            <p className="text-gray-400 mt-2 text-sm">{currentlyPlaying.description}</p>
+        </div>
+        {playlist.length > 0 && (
+          <>
+            <h4 className="p-4 pb-2 text-sm font-semibold text-gray-300 flex items-center">
+              <ListBulletIcon className="h-5 w-5 mr-2" />
+              Up Next in {currentlyPlaying.series}
+            </h4>
+            <div className="flex-1 overflow-y-auto px-2 pb-2">
+                {playlist.map(item => (
+                    <div 
+                        key={item.id}
+                        onClick={() => setCurrentlyPlaying(item)}
+                        className={`flex items-center space-x-3 p-2 rounded-lg cursor-pointer transition-colors ${
+                            currentlyPlaying.id === item.id 
+                            ? 'bg-blue-600 bg-opacity-25' 
+                            : 'hover:bg-gray-700'
+                        }`}
+                    >
+                        <img src={item.thumbnailUrl} alt={item.title} className="w-24 h-14 object-cover rounded-md flex-shrink-0" />
+                        <div className="overflow-hidden">
+                            <p className={`font-semibold text-sm truncate ${currentlyPlaying.id === item.id ? 'text-blue-400' : 'text-white'}`}>{item.title}</p>
+                            <p className="text-xs text-gray-400">{item.duration}</p>
+                        </div>
+                    </div>
+                ))}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -72,12 +113,12 @@ const ContentCard: React.FC<{ content: Content; onClick: () => void }> = ({ cont
       </div>
       <div className="p-4">
         <h3 className="font-bold text-lg text-white">{content.title}</h3>
+        {content.series && <p className="text-xs text-blue-400 font-semibold mt-1">{content.series}</p>}
         <p className="text-gray-400 text-sm mt-1">{content.description}</p>
       </div>
     </div>
   );
 };
-
 
 const ContentLibrary: React.FC = () => {
   const [playingContent, setPlayingContent] = useState<Content | null>(null);
@@ -91,7 +132,7 @@ const ContentLibrary: React.FC = () => {
           setPlayingContent(content);
       }
     } else {
-        setPlayingContent(null); // Close video player if another content type is clicked
+        setPlayingContent(null); 
         let url = '';
         if (content.type === 'document') {
             url = `https://drive.google.com/file/d/${content.driveFileId}/view`;
@@ -104,6 +145,10 @@ const ContentLibrary: React.FC = () => {
         }
     }
   };
+
+  const playlist = playingContent?.series 
+    ? contentList.filter(c => c.series === playingContent.series && c.type === 'video')
+    : [];
 
   if (contentList.length === 0) {
     return (
@@ -122,18 +167,17 @@ const ContentLibrary: React.FC = () => {
   return (
     <div>
       <h2 className="text-3xl font-bold mb-6 text-white">Content Library</h2>
-      <div className="flex flex-col lg:flex-row gap-8 items-start">
-        <div className={`flex-1 grid grid-cols-1 sm:grid-cols-2 gap-8 ${playingContent ? 'lg:grid-cols-2' : 'lg:grid-cols-3'} transition-all duration-300`}>
+      <div className="flex gap-8 items-start">
+        <div className={`flex-1 grid grid-cols-1 sm:grid-cols-2 gap-8 transition-all duration-300 ${playingContent ? 'lg:grid-cols-2' : 'lg:grid-cols-3'}`}>
           {contentList.map(content => (
             <ContentCard key={content.id} content={content} onClick={() => handleContentClick(content)} />
           ))}
         </div>
-        {playingContent && (
-           <div className="w-full lg:w-2/5 xl:w-1/3 sticky top-8">
-            <VideoSidePanel content={playingContent} onClose={() => setPlayingContent(null)} />
-          </div>
-        )}
+        <div className={`w-full lg:w-2/5 xl:w-1/3 transition-transform duration-500 ease-in-out fixed top-0 right-0 h-full z-20 ${playingContent ? 'translate-x-0' : 'translate-x-full'}`}>
+           {playingContent && <PlayerPanel selectedContent={playingContent} onClose={() => setPlayingContent(null)} playlist={playlist} />}
+        </div>
       </div>
+       {playingContent && <div onClick={() => setPlayingContent(null)} className="fixed inset-0 bg-black bg-opacity-50 z-10 lg:hidden"></div>}
     </div>
   );
 };

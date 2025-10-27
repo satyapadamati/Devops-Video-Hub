@@ -11,4 +11,5 @@ export interface Content {
   driveFileId: string;
   type: 'video' | 'document' | 'folder';
   duration: string;
+  series?: string;
 }
